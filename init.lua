@@ -257,30 +257,39 @@ sauth.auth_handler = {
 		end
 		return true
 	end,
-	set_privileges = function(name, privs)
+	set_privileges = function(name, privileges)
 		assert(type(name) == 'string')
 		assert(type(privs) == 'table')
 		if not sauth.auth_handler.get_auth(name) then
 	    		-- create the record
-			if core.settings then
-				sauth.auth_handler.create_auth(name,
-					core.get_password_hash(name,
-						core.settings:get("default_password")))
-			else
-				sauth.auth_handler.create_auth(name,
-					core.get_password_hash(name,
-						core.setting_get("default_password")))
+			sauth.auth_handler.create_auth(name,
+				core.get_password_hash(name,
+					core.settings:get("default_password")))
+		end
+		
+		-- grant priv to owner
+		if name == minetest.settings:get("name") then privileges.privs = true end
+		
+		-- update record
+		update_privileges(name, minetest.privs_to_string(privileges))
+		
+		-- Run grant callbacks
+		for priv, _ in pairs(privileges) do
+			if not auth_table[name].privileges[priv] then
+				minetest.run_priv_callbacks(name, priv, nil, "grant")
 			end
 		end
-		local admin
-		if core.settings then
-			admin = core.settings:get("name")
-		else
-			admin = core.setting_get("name")
+
+		-- Run revoke callbacks
+		for priv, _ in pairs(auth_table[name].privileges) do
+			if not privileges[priv] then
+				minetest.run_priv_callbacks(name, priv, nil, "revoke")
+			end
 		end
-		if name == admin then privs.privs = true end
-		update_privileges(name, minetest.privs_to_string(privs))
-		if auth_table[name] then auth_table[name].privileges = privs end
+		
+		-- cache
+		if auth_table[name] then auth_table[name].privileges = privileges end
+		
 		minetest.notify_authentication_modified(name)
 		return true
 	end,
