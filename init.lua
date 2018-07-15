@@ -21,7 +21,7 @@ if sqlite3 then sqlite3 = nil end
 local singleplayer = minetest.is_singleplayer()
 
 -- Use conf setting to determine handler for singleplayer
-if not minetest.setting_get(MN .. '.enable_singleplayer')
+if not minetest.settings:get(MN .. '.enable_singleplayer')
 and singleplayer then
 	  minetest.log("info", "singleplayer game using builtin auth handler")
 	  return
@@ -81,7 +81,7 @@ local function check_name(name)
 	]]):format(name)
 	local it, state = db:nrows(query)
 	local row = it(state)
-	return row
+	return row ~= nil
 end
 
 local function get_setting(column)
@@ -198,11 +198,7 @@ sauth.auth_handler = {
 		for priv, _ in pairs(minetest.string_to_privs(r.privileges)) do
 			privileges[priv] = true
 		end
-		if core.settings then
-			admin = core.settings:get("name")
-		else
-			admin = core.setting_get("name")
-		end
+		admin = core.settings:get("name")
 		-- If singleplayer, grant privileges marked give_to_singleplayer = true
 		if core.is_singleplayer() then
 			for priv, def in pairs(core.registered_privileges) do
@@ -229,12 +225,7 @@ sauth.auth_handler = {
 		assert(type(name) == 'string')
 		assert(type(password) == 'string')
 		local ts, privs = os.time()
-		if core.settings then
-			privs = core.settings:get("default_privs")
-		else
-			-- use old method
-			privs = core.setting_get("default_privs")
-		end
+		privs = core.settings:get("default_privs")
 		-- Params: name, password, privs, last_login
 		add_record(name,password,privs,ts)
 		return true
